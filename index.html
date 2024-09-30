@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestión de Inventario</h1>
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Buscar por nombre o ID">
+            <select id="statusFilter">
+                <option value="all">Todos</option>
+                <option value="available">Disponible</option>
+                <option value="outOfStock">Agotado</option>
+            </select>
+            <button id="addProductBtn">Agregar Producto</button>
+        </div>
+        <table id="productTable">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Producto</th>
+                    <th>Inventario</th>
+                    <th>Precio</th>
+                    <th>Ventas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="pagination">
+            <span id="pageInfo"></span>
+            <div>
+                <button id="prevPage">Anterior</button>
+                <button id="nextPage">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">Agregar/Editar Producto</h2>
+            <form id="productForm">
+                <input type="text" id="productName" placeholder="Nombre del producto" required>
+                <input type="number" id="productInventory" placeholder="Inventario" required>
+                <input type="number" id="productPrice" placeholder="Precio" step="0.01" required>
+                <input type="number" id="productSales" placeholder="Ventas" required>
+                <input type="url" id="productImage" placeholder="URL de la imagen" required>
+                <button type="submit">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let products = [
+            { id: '1', name: 'Colchón Visco Cama Nido', inventory: 110, price: 210, sales: 6, image: 'https://via.placeholder.com/100' },
+            { id: '2', name: 'Colchón Basic Cama Nido', inventory: 95, price: 180, sales: 8, image: 'https://via.placeholder.com/100' },
+            { id: '3', name: 'Topper Visco 4', inventory: 75, price: 120, sales: 12, image: 'https://via.placeholder.com/100' },
+            { id: '4', name: 'Colchón Visco King 1', inventory: 50, price: 350, sales: 3, image: 'https://via.placeholder.com/100' },
+            { id: '5', name: 'Colchón Visco Energy 2', inventory: 80, price: 280, sales: 5, image: 'https://via.placeholder.com/100' },
+        ];
+
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
+        function renderTable() {
+            const tableBody = document.querySelector('#productTable tbody');
+            tableBody.innerHTML = '';
+
+            const filteredProducts = filterProducts();
+            const paginatedProducts = paginateProducts(filteredProducts);
+
+            paginatedProducts.forEach(product => {
+                const row = `
+                    <tr>
+                        <td><img src="${product.image}" alt="${product.name}" width="50"></td>
+                        <td>${product.name}</td>
+                        <td>${product.inventory > 0 ? 'Disponible' : 'Agotado'} (${product.inventory})</td>
+                        <td>€${product.price.toFixed(2)}</td>
+                        <td>${product.sales}</td>
+                        <td>
+                            <button onclick="editProduct('${product.id}')">Editar</button>
+                            <button onclick="deleteProduct('${product.id}')">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+            updatePagination(filteredProducts.length);
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            return products.filter(product => {
+                const matchesSearch = product.name.toLowerCase().includes(searchTerm) || product.id.includes(searchTerm);
+                const matchesStatus = statusFilter === 'all' || 
+                    (statusFilter === 'available' && product.inventory > 0) || 
+                    (statusFilter === 'outOfStock' && product.inventory === 0);
+                return matchesSearch && matchesStatus;
+            });
+        }
+
+        function paginateProducts(filteredProducts) {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+        }
+
+        function updatePagination(totalItems) {
+            const pageInfo = document.getElementById('pageInfo');
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+        }
+
+        function showModal(product = null) {
+            const modal = document.getElementById('productModal');
+            const form = document.getElementById('productForm');
+            const title = document.getElementById('modalTitle');
+
+            if (product) {
+                title.textContent = 'Editar Producto';
+                form.elements.productName.value = product.name;
+                form.elements.productInventory.value = product.inventory;
+                form.elements.productPrice.value = product.price;
+                form.elements.productSales.value = product.sales;
+                form.elements.productImage.value = product.image;
+                form.dataset.productId = product.id;
+            } else {
+                title.textContent = 'Agregar Producto';
+                form.reset();
+                form.dataset.productId = '';
+            }
+
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').style.display = 'none';
+        }
+
+        function addOrUpdateProduct(event) {
+            event.preventDefault();
+            const form = event.target;
+            const productId = form.dataset.productId;
+
+            const newProduct = {
+                id: productId || Date.now().toString(),
+                name: form.elements.productName.value,
+                inventory: parseInt(form.elements.productInventory.value),
+                price: parseFloat(form.elements.productPrice.value),
+                sales: parseInt(form.elements.productSales.value),
+                image: form.elements.productImage.value
+            };
+
+            if (productId) {
+                const index = products.findIndex(p => p.id === productId);
+                products[index] = newProduct;
+            } else {
+                products.push(newProduct);
+            }
+
+            renderTable();
+            closeModal();
+        }
+
+        function editProduct(id) {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                showModal(product);
+            }
+        }
+
+        function deleteProduct(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+                products = products.filter(p => p.id !== id);
+                renderTable();
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('statusFilter').addEventListener('change', renderTable);
+        document.getElementById('addProductBtn').addEventListener('click', () => showModal());
+        document.getElementById('productForm').addEventListener('submit', addOrUpdateProduct);
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        });
+        document.getElementById('nextPage').addEventListener('click', () => {
+            const totalPages = Math.ceil(filterProducts().length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        });
+        document.querySelector('.close').addEventListener('click', closeModal);
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('productModal')) {
+                closeModal();
+            }
+        }
+
+        // Initial render
+        renderTable();
+    </script>
+</body>
+</html>
