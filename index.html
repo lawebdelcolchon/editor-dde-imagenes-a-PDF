@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Imágenes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Editor de Imágenes y Exportación a PDF</h1>
+    
+    <input type="file" id="upload" accept="image/*">
+    <br>
+    <canvas id="canvas"></canvas>
+    <br>
+    <button id="grayscale">Convertir a Escala de Grises</button>
+    <button id="exportPDF">Exportar a PDF</button>
+    
+    <script src="libs/fabric.min.js"></script>
+    <script src="libs/jspdf.min.js"></script>
+    <script src="libs/html2canvas.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
